@@ -1,0 +1,47 @@
+--  MDX Query for Sales Analysis
+
+-- Select measures and dimensions
+SELECT
+  [Measures].[Sales Amount] ON COLUMNS,
+  NON EMPTY {
+    [Time].[Year].[All].Children,
+    [Product].[Category].[All].Children
+  } ON ROWS
+FROM [SalesCube]
+WHERE ([Date].[2023], [Region].[North])
+
+-- Calculate year-over-year growth
+WITH MEMBER [Measures].[YoYGrowth] AS
+  IIF(
+    [Time].[Year].CurrentMember.Lag(1) IS NULL,
+    NULL,
+    ([Measures].[Sales Amount] - [Measures].[Sales Amount].Lag(1)) / [Measures].[Sales Amount].Lag(1)
+  )
+SELECT
+  [Measures].[YoYGrowth] ON COLUMNS
+FROM [SalesCube]
+WHERE ([Time].[Year].[2023], [Region].[North])
+
+-- Find top-selling products
+WITH SET [TopSellingProducts] AS
+  TopCount(
+    [Product].[Product Name].[All].Children,
+    10,
+    [Measures].[Sales Amount]
+  )
+SELECT
+  [TopSellingProducts] ON COLUMNS
+FROM [SalesCube]
+WHERE ([Date].[2023], [Region].[North])
+
+-- Calculate cumulative sales
+WITH MEMBER [Measures].[CumulativeSales] AS
+  Sum(
+    NULL : [Time].[Month].CurrentMember,
+    [Measures].[Sales Amount]
+  )
+SELECT
+  [Measures].[CumulativeSales] ON COLUMNS,
+  [Time].[Month].[All].Children ON ROWS
+FROM [SalesCube]
+WHERE ([Date].[2023], [Region].[Asia])
